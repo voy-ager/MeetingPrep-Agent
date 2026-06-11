@@ -2,8 +2,6 @@
 
 > AI-powered pre-meeting intelligence. Researches your attendees, surfaces your conversation history, and delivers a personalized brief — automatically, 30 minutes before every call.
 
-**[Live demo](https://your-deployed-url.vercel.app)** · [Backend API](https://your-backend-url.railway.app/docs)
-
 ---
 
 ## The problem
@@ -117,6 +115,59 @@ Prospect: ...
 The more transcripts you add, the richer the history search becomes. The agent matches by company name and attendee names across all files — no manual tagging needed.
 
 To re-index after adding new files, delete the `chroma_db/` folder and restart the backend. The index rebuilds in seconds.
+
+---
+
+## Running locally
+
+### Prerequisites
+- Python 3.10+
+- Node.js 18+
+- Free Groq API key from [console.groq.com](https://console.groq.com)
+
+### Setup
+
+```bash
+git clone https://github.com/YOUR_USERNAME/meetingprep-agent
+cd meetingprep-agent
+
+python -m venv .venv
+
+# Windows
+.venv\Scripts\activate
+
+# Mac / Linux
+source .venv/bin/activate
+
+pip install -r requirements.txt
+```
+
+Create a `.env` file in the project root:
+
+```
+GROQ_API_KEY=gsk_your-key-here
+CHROMA_PERSIST_DIR=./chroma_db
+```
+
+### Start the backend
+
+```bash
+uvicorn api.server:app --reload --port 8001
+```
+
+The first run downloads the embedding model (~90MB) and indexes your transcripts. Subsequent starts are instant.
+
+### Start the frontend
+
+Open a second terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open **http://localhost:3000**, fill in a meeting and attendees, and hit **Generate brief**.
 
 ---
 
