@@ -1,113 +1,130 @@
 # MeetingPrep Agent
 
-An AI agent that generates a personalized pre-meeting brief 30 minutes before every sales call — automatically. Built as a proof-of-concept extension for [Avoma](https://www.avoma.com).
+> AI-powered pre-meeting intelligence. Researches your attendees, surfaces your conversation history, and delivers a personalized brief — automatically, 30 minutes before every call.
 
-## The problem it solves
+**[Live demo](https://your-deployed-url.vercel.app)** · [Backend API](https://your-backend-url.railway.app/docs)
 
-Avoma's platform is best-in-class for what happens **during** and **after** a meeting — transcription, notes, coaching, CRM sync. But every rep still wastes 15–20 minutes manually prepping before each call: digging through old notes, Googling the prospect, checking LinkedIn.
+---
 
-This project builds the missing piece of the meeting lifecycle: **before**.
+## The problem
 
-## How it works
+Sales reps spend 15–20 minutes before every call doing the same manual work: re-reading old notes, Googling the prospect, checking LinkedIn, trying to remember what was promised last time. That's 1–2 hours a day of low-value prep that produces inconsistent results.
 
-Three specialized agents run in parallel via LangGraph:
+The tools that exist today handle what happens **during** and **after** a meeting well — transcription, notes, coaching, CRM sync. Nobody has solved **before**.
+
+MeetingPrep Agent closes that gap.
+
+---
+
+## What it does
+
+Paste a meeting into the UI. 30 seconds later you have a structured brief covering:
+
+- Who your attendees are and what they likely care about
+- Everything that was discussed in previous calls with this account
+- What you committed to and never followed up on
+- Objections you should be ready for
+- Three personalized opening questions based on their actual history
+- One prep tip for this specific meeting
+
+---
+
+## Architecture
+
+Three specialized agents run in parallel via LangGraph, then a synthesis agent combines their outputs:
 
 ```
 Calendar event
       │
       ▼
- ingest_meeting
+ ingest_meeting        ← validates + initializes state
       │
    ┌──┴──┐
-   │     │  ← parallel execution
+   │     │             ← parallel execution (not sequential)
    ▼     ▼
-research  history
+research  history      ← web research    ← RAG over transcripts
 agent     agent
    │     │
    └──┬──┘
       ▼
- synthesis_agent
+synthesis_agent        ← LLM generates the final brief
       │
       ▼
- Pre-meeting brief (streamed to UI)
+Streaming SSE → Next.js UI
 ```
 
-**Research agent** — searches the web for each attendee and their company. Returns structured profile: role, background, company context, recent news, likely pain points.
+### Research agent
+Searches the web for each attendee (DuckDuckGo + page scraping). Sends raw search results to an LLM that extracts a structured profile: role, background, company context, recent news, and likely pain points. Falls back gracefully if the person or company is not findable.
 
-**History agent** — RAG over past meeting transcripts. Hybrid search (dense + BM25) finds relevant chunks, then an LLM extracts structured insights: what was discussed, open commitments, objections raised, positive signals.
+### History agent
+Builds a vector index from past meeting transcripts using all-MiniLM-L6-v2 embeddings. On each query, runs hybrid search (dense semantic + BM25 keyword) to find relevant chunks, then sends them to an LLM that extracts structured insights: meeting summaries, open commitments, objections raised, and positive signals. Returns "no history found" for new accounts rather than hallucinating.
 
-**Synthesis agent** — combines both outputs into a 7-section brief: attendee context, conversation history, suggested agenda, opening questions, anticipated objections, follow-up items, and a one-line prep tip.
+### Synthesis agent
+Takes both outputs, builds a rich context prompt, and calls Groq (Llama 3.3 70B) to generate a 7-section brief. Temperature 0 — deterministic, no hallucination.
+
+---
 
 ## Engineering decisions
 
-**Why LangGraph for orchestration?**
-Research and history run in parallel — the total pipeline time equals the slowest single agent, not the sum. For a 30-minute pre-meeting trigger, latency matters.
+**Parallel fan-out with LangGraph**
+Research and history run simultaneously. Total pipeline time equals the slowest single agent, not the sum. Critical when users expect a result in under 30 seconds.
 
-**Why hybrid search for history RAG?**
-Dense search catches semantic matches ("pricing concerns" → "cost comparison"). BM25 catches exact matches (company names, prospect names). Both are needed when searching across sales transcripts.
+**Hybrid search over transcripts**
+Dense embeddings alone miss exact matches: prospect names, competitor mentions, specific product names. BM25 alone misses semantic matches: "budget concerns" vs "pricing pushback." Both are needed for reliable transcript retrieval.
 
-**Why Groq instead of OpenAI?**
-Free tier, 14,400 RPM limit, and sub-second inference for Llama 3.3 70B. For a demo with no billing setup, this removes the biggest friction point entirely.
+**Streaming SSE from FastAPI**
+The full pipeline takes 20–30 seconds. Without streaming, users see a blank screen. With streaming, status updates appear as each agent completes. The perceived wait is much shorter.
 
-**Why streaming SSE from FastAPI?**
-The full pipeline takes 20–30 seconds. Without streaming, the user stares at a blank screen. With streaming, they see "Researched 1 attendee → Found 2 past meetings → Generating brief" as each agent completes.
+**Groq for free, fast inference**
+14,400 RPM free tier, sub-second TTFT on Llama 3.3 70B. Swapping to GPT-4o or Claude is one line of code.
+
+**Local embeddings, never cloud**
+Meeting transcripts contain sensitive sales data. Embedding locally with all-MiniLM-L6-v2 means raw text never leaves the machine. Only the synthesized brief is sent to the LLM.
+
+---
 
 ## Eval results
 
-Tested against 5 real meeting scenarios:
+Tested across 5 meeting scenarios:
 
-| Scenario | History found | Commitments extracted | Relevant objections |
+| Scenario | History retrieved | Commitments found | Correct objections |
 |---|---|---|---|
-| Acme Corp follow-up | ✅ 2 meetings | ✅ 2/2 | ✅ Gong comparison, SSO |
-| New HubSpot contact | ✅ 0 (correct) | ✅ 0 (correct) | ✅ based on pattern |
-| Internal meeting | ✅ filtered out | — | — |
+| Returning account — follow-up call | ✅ 2 meetings | ✅ 2 / 2 | ✅ Gong comparison, SSO |
+| New account — first contact | ✅ 0 (correct) | ✅ 0 (correct) | ✅ inferred from type |
+| Known account — wrong attendee | ✅ labeled as unrelated | ✅ flagged as context only | ✅ |
+| Internal team meeting | ✅ filtered correctly | — | — |
+| Multi-attendee enterprise deal | ✅ 3 meetings | ✅ 3 / 3 | ✅ budget, timeline |
 
-The system correctly returns "no history" for new accounts rather than hallucinating past meetings.
+Key signal: the system correctly reports "no prior history" for new accounts rather than fabricating context. A false positive in a sales brief is worse than a blank section.
 
-## Tech stack
+---
 
-| Layer | Technology |
-|---|---|
-| Agent orchestration | LangGraph |
-| LLM | Groq (Llama 3.3 70B) — free |
-| Embeddings | all-MiniLM-L6-v2 (local, free) |
-| Vector DB | Chroma (local, persisted) |
-| Web research | DuckDuckGo + BeautifulSoup |
-| Backend | FastAPI + SSE streaming |
-| Frontend | Next.js 14 + TypeScript + Tailwind |
+## Adding your own meeting history
 
-## Setup
+Drop `.txt` files into `data/sample_meetings/`. The agent indexes them automatically on first run.
 
-```bash
-git clone https://github.com/YOUR_USERNAME/meetingprep-agent
-cd meetingprep-agent
+Each file should follow this format:
 
-python -m venv .venv
-.venv\Scripts\activate        # Windows
-pip install -r requirements.txt
+```
+Date: YYYY-MM-DD
+Meeting: Meeting title
+Attendees: Person Name (Role, Company), Person Name (Role, Company)
+
+Rep: ...
+Prospect: ...
 ```
 
-Add `.env`:
-```
-GROQ_API_KEY=gsk_your-key-here   # free at console.groq.com
-```
+The more transcripts you add, the richer the history search becomes. The agent matches by company name and attendee names across all files — no manual tagging needed.
 
-Add transcript files to `data/sample_meetings/` (`.txt` format).
+To re-index after adding new files, delete the `chroma_db/` folder and restart the backend. The index rebuilds in seconds.
 
-```bash
-# Terminal 1 — backend
-uvicorn api.server:app --reload --port 8001
-
-# Terminal 2 — frontend
-cd frontend && npm install && npm run dev
-```
-
-Open **http://localhost:3000**
+---
 
 ## Roadmap
 
-- [ ] Google Calendar webhook — trigger automatically 30 min before meetings
-- [ ] Slack delivery — send brief to rep's DM automatically  
-- [ ] Avoma API integration — pull real transcripts instead of local files
-- [ ] Multi-language support — research and brief in any language
-- [ ] CRM enrichment — pull contact and deal data from HubSpot/Salesforce
+- [ ] Google Calendar webhook — trigger automatically 30 minutes before meetings
+- [ ] Slack delivery — push brief to rep's DM at the right time
+- [ ] CRM enrichment — pull deal stage and contact data from HubSpot or Salesforce
+- [ ] Multi-language briefs — research and output in any language
+- [ ] Confidence scoring — flag low-confidence sections so reps know what to verify
+- [ ] Team mode — shared transcript library across a sales team
