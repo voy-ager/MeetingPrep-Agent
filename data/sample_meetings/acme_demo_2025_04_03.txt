@@ -1,0 +1,31 @@
+Date: 2025-04-03
+Meeting: Demo Call — Acme Corp
+Attendees: Sarah Chen (VP Sales), Mike Johnson (RevOps), Rep (Our Company)
+
+Rep: Great to have Mike join us today. I'll walk through how Avoma handles the three things Sarah mentioned — visibility, coaching, and CRM hygiene.
+
+Sarah: Mike wanted to see the CRM integration specifically. He's the one who'd have to implement it.
+
+Rep: Perfect. So here's the Salesforce sync — when a meeting ends, Avoma automatically fills in MEDDIC fields based on what was actually discussed. Mike, what fields are you trying to capture today?
+
+Mike: Mostly Economic Buyer and Decision Criteria. Our AEs never remember to fill those in.
+
+Rep: Here's exactly that. The AI listens for those signals and populates them. Now for pricing — we're $29 per user per month for the conversation intelligence tier.
+
+Sarah: That's actually more affordable than I expected. We were looking at Gong and it was going to be over $100 per user.
+
+Mike: Yeah but Gong has more features right? Like the revenue forecasting?
+
+Rep: Avoma has that too — deal risk alerts, pipeline inspection, forecasting. Let me show you.
+
+Sarah: Honestly this looks like it covers everything we need. Can you send me a case study from a healthcare company? We have a few healthcare clients and they're always sensitive about compliance.
+
+Rep: Absolutely, I'll send that today.
+
+Mike: What about SSO? We use Okta.
+
+Rep: Yes, SSO with Okta and most major identity providers. I'll include that in the follow-up email too.
+
+Sarah: This has been really helpful. Let me loop in our legal team on the data security side. Can we reconnect in two weeks?
+
+Rep: Definitely. I'll send the case study and SSO documentation today and we'll schedule the follow-up.

@@ -1,0 +1,19 @@
+Date: 2025-03-15
+Meeting: Intro Call — Acme Corp
+Attendees: Sarah Chen (VP Sales, Acme Corp), Rep (Our Company)
+
+Rep: Thanks for making time Sarah. Can you tell me a bit about what's going on with your sales team right now?
+
+Sarah: Sure. We're growing fast — we just added 8 new SDRs and we're planning to double the AE team by Q3. The challenge is that our call quality is really inconsistent. Some reps are great, some aren't, and we have no visibility into what's actually happening on calls.
+
+Rep: How are you handling call recording and notes today?
+
+Sarah: We use Zoom recordings but honestly nobody goes back and watches them. Notes are all manual — some reps are disciplined, most aren't. Our CRM data is a mess because updates depend on whoever remembers to log after a call.
+
+Rep: What would success look like for you if you solved this?
+
+Sarah: I want to know what our top performers are doing differently. And I want our managers to be able to coach without sitting in on every call. Right now coaching is totally reactive — we only find out about problems when deals are already dead.
+
+Rep: That makes total sense. Let me show you what Avoma does for exactly this. Can we schedule a demo?
+
+Sarah: Yes, let's do it. Next week works.
